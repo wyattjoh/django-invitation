@@ -10,6 +10,7 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.contrib.sites.models import Site
+from django.utils.timezone import now
 
 if getattr(settings, 'INVITATION_USE_ALLAUTH', False):
     import re
@@ -70,7 +71,7 @@ class InvitationKeyManager(models.Manager):
 class InvitationKey(models.Model):
     key = models.CharField(_('invitation key'), max_length=40)
     date_invited = models.DateTimeField(_('date invited'), 
-                                        default=datetime.datetime.now)
+                                        auto_now_add=True)
     from_user = models.ForeignKey(User, 
                                   related_name='invitations_sent')
     registrant = models.ForeignKey(User, null=True, blank=True, 
@@ -100,7 +101,7 @@ class InvitationKey(models.Model):
         
         """
         expiration_date = datetime.timedelta(days=settings.ACCOUNT_INVITATION_DAYS)
-        return self.date_invited + expiration_date <= datetime.datetime.now()
+        return self.date_invited + expiration_date <= now()
     key_expired.boolean = True
     
     def mark_used(self, registrant):

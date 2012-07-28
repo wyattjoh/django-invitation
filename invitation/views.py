@@ -1,8 +1,10 @@
 from django.conf import settings
 from django.views.generic.simple import direct_to_template
+from django.template.loader import render_to_string
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
+from django.contrib.sites.models import Site
 
 if getattr(settings, 'INVITATION_USE_ALLAUTH', False):
     from allauth.socialaccount.views import signup as allauth_signup
@@ -78,11 +80,18 @@ def invite(request, success_url=None,
             # problems with the default URLConf for this application, which
             # imports this file.
             return HttpResponseRedirect(success_url or reverse('invitation_complete'))
+        email_preview = None
     else:
         form = form_class()
+        email_preview = render_to_string('invitation/invitation_email.txt',
+                                   { 'invitation_key': None,
+                                     'expiration_days': settings.ACCOUNT_INVITATION_DAYS,
+                                     'from_user': request.user,
+                                     'site': Site.objects.get_current() })
     extra_context.update({
             'form': form,
             'remaining_invitations': remaining_invitations,
+            'email_preview': email_preview,
         })
     return direct_to_template(request, template_name, extra_context)
 invite = login_required(invite)

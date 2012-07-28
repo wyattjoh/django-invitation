@@ -125,6 +125,7 @@ class InvitationKey(models.Model):
         message = render_to_string('invitation/invitation_email.txt',
                                    { 'invitation_key': self,
                                      'expiration_days': settings.ACCOUNT_INVITATION_DAYS,
+                                     'from_user': self.from_user,
                                      'site': current_site })
         
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])

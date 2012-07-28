@@ -11,7 +11,11 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.contrib.sites.models import Site
 
-from registration.models import SHA1_RE
+if getattr(settings, 'INVITATION_USE_ALLAUTH', False):
+    import re
+    SHA1_RE = re.compile('^[a-f0-9]{40}$')
+else:    
+    from registration.models import SHA1_RE
 
 class InvitationKeyManager(models.Manager):
     def get_key(self, invitation_key):

@@ -1,4 +1,9 @@
-from registration.backends.default import DefaultBackend
+from django.conf import settings
+if getattr(settings, 'INVITATION_USE_ALLAUTH', False):
+    from allauth.account.auth_backends import AuthenticationBackend as DefaultBackend
+else:
+    from registration.backends.default import DefaultBackend
+
 from invitation.models import InvitationKey
 
 class InvitationBackend(DefaultBackend):

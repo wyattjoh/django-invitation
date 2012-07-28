@@ -1,7 +1,15 @@
+from django.conf import settings
 from django.conf.urls.defaults import *
 from django.views.generic.simple import direct_to_template
 
-from registration.forms import RegistrationFormTermsOfService
+
+if getattr(settings, 'INVITATION_USE_ALLAUTH', False):
+    from allauth.account.forms import BaseSignupForm as RegistrationFormTermsOfService
+    reg_backend = 'allauth.account.auth_backends.AuthenticationBackend'
+else:
+    from registration.forms import RegistrationFormTermsOfService
+    reg_backend = 'registration.backends.default.DefaultBackend'
+    
 from invitation.views import invite, invited, register
 
 urlpatterns = patterns('',
@@ -17,6 +25,6 @@ urlpatterns = patterns('',
                 name='invitation_invited'),
     url(r'^register/$',
                 register,
-                { 'backend': 'registration.backends.default.DefaultBackend' },
+                { 'backend': reg_backend },
                 name='registration_register'),
 )

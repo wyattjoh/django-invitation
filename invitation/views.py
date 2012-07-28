@@ -4,9 +4,19 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 
-from registration.views import register as registration_register
-from registration.forms import RegistrationForm
-from registration.backends import default as registration_backend
+if getattr(settings, 'INVITATION_USE_ALLAUTH', False):
+    from allauth.socialaccount.views import signup as allauth_signup
+    from allauth.socialaccount.forms import SignupForm as RegistrationForm
+    registration_template = 'accounts/signup.html'
+    log.debug("Using allauth as registration")
+    
+    def registration_register(request, backend, success_url, form_class, disallowed_url, template_name, extra_context):
+        allauth_signup(request, template_name=template_name)
+else:        
+    from registration.views import register as registration_register
+    from registration.forms import RegistrationForm
+    registration_template = 'registration/registration_form.html'
+    log.debug("Using registration as registration - boo!")
 
 from invitation.models import InvitationKey
 from invitation.forms import InvitationKeyForm
@@ -31,7 +41,7 @@ def register(request, backend, success_url=None,
             form_class=RegistrationForm,
             disallowed_url='registration_disallowed',
             post_registration_redirect=None,
-            template_name='registration/registration_form.html',
+            template_name=registration_template,
             wrong_template_name='invitation/wrong_invitation_key.html',
             extra_context=None):
     extra_context = extra_context is not None and extra_context.copy() or {}

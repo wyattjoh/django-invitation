@@ -10,7 +10,6 @@ if getattr(settings, 'INVITATION_USE_ALLAUTH', False):
     from allauth.socialaccount.views import signup as allauth_signup
     from allauth.socialaccount.forms import SignupForm as RegistrationForm
     registration_template = 'accounts/signup.html'
-    log.debug("Using allauth as registration")
     
     def registration_register(request, backend, success_url, form_class, disallowed_url, template_name, extra_context):
         allauth_signup(request, template_name=template_name)
@@ -18,7 +17,6 @@ else:
     from registration.views import register as registration_register
     from registration.forms import RegistrationForm
     registration_template = 'registration/registration_form.html'
-    log.debug("Using registration as registration - boo!")
 
 from invitation.models import InvitationKey
 from invitation.forms import InvitationKeyForm

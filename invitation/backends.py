@@ -18,5 +18,8 @@ class InvitationBackend(DefaultBackend):
         key = InvitationKey.objects.get_key(invitation_key)
         if key:
             key.mark_used(user)
+            
+            # delete it from the session too
+            del request.session['invitation_key']
 
         return ('registration_complete', (), {})

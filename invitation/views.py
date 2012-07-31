@@ -35,6 +35,7 @@ def invited(request, invitation_key=None, extra_context=None):
             template_name = 'invitation/wrong_invitation_key.html'
         extra_context = extra_context is not None and extra_context.copy() or {}
         extra_context.update({'invitation_key': invitation_key})
+        request.session['invitation_key'] = invitation_key
         return direct_to_template(request, template_name, extra_context)
     else:
         return HttpResponseRedirect(reverse('registration_register'))

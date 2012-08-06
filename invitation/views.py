@@ -70,8 +70,10 @@ def invite(request, success_url=None,
     extra_context = extra_context is not None and extra_context.copy() or {}
     remaining_invitations = remaining_invitations_for_user(request.user)
     if request.method == 'POST':
-        form = form_class(data=request.POST, files=request.FILES)
-        if remaining_invitations > 0 and form.is_valid():
+        form = form_class(data=request.POST, files=request.FILES, 
+                          remaining_invitations=remaining_invitations, 
+                          user_email=request.user.email)
+        if form.is_valid():
             invitation = InvitationKey.objects.create_invitation(request.user)
             invitation.send_to(form.cleaned_data["email"])
             # success_url needs to be dynamically generated here; setting a
@@ -79,10 +81,10 @@ def invite(request, success_url=None,
             # problems with the default URLConf for this application, which
             # imports this file.
             return HttpResponseRedirect(success_url or reverse('invitation_complete'))
-        email_preview = None
     else:
         form = form_class()
-        email_preview = render_to_string('invitation/invitation_email.txt',
+
+    email_preview = render_to_string('invitation/invitation_email.txt',
                                    { 'invitation_key': None,
                                      'expiration_days': settings.ACCOUNT_INVITATION_DAYS,
                                      'from_user': request.user,

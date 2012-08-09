@@ -25,10 +25,28 @@ from django.core import mail
 from django.core import management
 from django.core.urlresolvers import reverse
 from django.test import TestCase
+from django.contrib.sites.models import Site
+
 
 from invitation import forms
 from invitation.models import InvitationKey, InvitationUser
 
+allauth_installed = False 
+try:
+    from allauth.socialaccount.models import SocialApp
+    if 'allauth' in settings.INSTALLED_APPS:
+        allauth_installed = True
+except:
+    pass
+
+registration_installed = False    
+try: 
+    import registration
+    if 'registration' in settings.INSTALLED_APPS:
+        registration_installed = True
+except:
+    pass        
+    
 class InvitationTestCase(TestCase):
     """
     Base class for the test cases.
@@ -38,6 +56,11 @@ class InvitationTestCase(TestCase):
     
     """
     def setUp(self):
+        self.saved_socialaccount_providers = settings.SOCIALACCOUNT_PROVIDERS
+        settings.SOCIALACCOUNT_PROVIDERS = {}   
+        self.saved_invitation_use_allauth = settings.INVITATION_USE_ALLAUTH
+        settings.INVITATION_USE_ALLAUTH = False
+        
         self.sample_user = User.objects.create_user(username='alice',
                                                     password='secret',
                                                     email='alice@example.com')
@@ -54,6 +77,10 @@ class InvitationTestCase(TestCase):
             'password2': 'secret',
             'tos': '1'}
         
+        if allauth_installed:
+            self.facebook_app = SocialApp(site=Site.objects.get_current(), provider='facebook', name='test', key='abc', secret='def')
+            self.facebook_app.save()
+        
 
     def assertRedirect(self, response, viewname):
         """Assert that response has been redirected to ``viewname``."""
@@ -61,6 +88,10 @@ class InvitationTestCase(TestCase):
         expected_location = 'http://testserver' + reverse(viewname)
         self.assertEqual(response['Location'], expected_location)      
 
+    def tearDown(self):
+        settings.SOCIALACCOUNT_PROVIDERS = self.saved_socialaccount_providers 
+        settings.INVITATION_USE_ALLAUTH = self.saved_invitation_use_allauth 
+        
 
 class InvitationModelTests(InvitationTestCase):
     """
@@ -153,7 +184,16 @@ class InvitationFormTests(InvitationTestCase):
     django-invitation.
     
     """
-    def test_invitation_form(self):
+    def setUp(self):
+        super(InvitationFormTests, self).setUp()
+        self.saved_invitation_blacklist = settings.INVITATION_BLACKLIST
+        settings.INVITATION_BLACKLIST = ( '@mydomain.com', )
+ 
+    def tearDown(self):
+        settings.INVITATION_BLACKLIST = self.saved_invitation_blacklist
+        super(InvitationFormTests, self).tearDown()
+       
+    def test_invalid_invitation_form(self):
         """
         Test that ``InvitationKeyForm`` enforces email constraints.
         
@@ -164,14 +204,20 @@ class InvitationFormTests(InvitationTestCase):
             'data': { 'email': 'example.com' },
             'error': ('email', [u"Enter a valid e-mail address."])
             },
+            {
+             'data': {'email': 'an_address@mydomain.com'},
+             'error': ('email', [u"Thanks, but there's no need to invite us!"])
+            }                  
             ]
 
         for invalid_dict in invalid_data_dicts:
-            form = forms.InvitationKeyForm(data=invalid_dict['data'])
+            form = forms.InvitationKeyForm(data=invalid_dict['data'], remaining_invitations=1)
             self.failIf(form.is_valid())
             self.assertEqual(form.errors[invalid_dict['error'][0]], invalid_dict['error'][1])
 
-        form = forms.InvitationKeyForm(data={ 'email': 'foo@example.com' })
+    def test_invitation_form(self):
+        form = forms.InvitationKeyForm(data={ 'email': 'foo@example.com' ,}, remaining_invitations=1 )
+        print form.errors
         self.failUnless(form.is_valid())
 
 
@@ -180,6 +226,7 @@ class InvitationViewTests(InvitationTestCase):
     Tests for the views included in django-invitation.
     
     """
+    
     def test_invitation_view(self):
         """
         Test that the invitation view rejects invalid submissions,
@@ -250,6 +297,10 @@ class InvitationViewTests(InvitationTestCase):
         Test that after registration a key cannot be reused.
         
         """        
+        # This won't work if registration isn't installed
+        if not registration_installed:
+            return 
+        
         # The first use of the key to register a new user works.
         registration_data = self.sample_registration_data.copy()
         response = self.client.post(reverse('registration_register'), 
@@ -285,9 +336,12 @@ class InviteModeOffTests(InvitationTestCase):
         super(InviteModeOffTests, self).setUp()
         self.saved_invite_mode = settings.INVITE_MODE
         settings.INVITE_MODE = False
-
+        self.saved_socialaccount_providers = settings.SOCIALACCOUNT_PROVIDERS
+        settings.SOCIALACCOUNT_PROVIDERS = {}        
+ 
     def tearDown(self):
         settings.INVITE_MODE = self.saved_invite_mode
+        settings.SOCIALACCOUNT_PROVIDERS = self.saved_socialaccount_providers
         super(InviteModeOffTests, self).tearDown()
        
     def test_invited_view(self):
@@ -307,6 +361,10 @@ class InviteModeOffTests(InvitationTestCase):
         django-registration's register.
        
         """
+        # This won't work if registration isn't installed
+        if not registration_installed:
+            return 
+        
         # get
         response = self.client.get(reverse('registration_register'))
         self.assertEqual(response.status_code, 200)

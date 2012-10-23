@@ -23,10 +23,6 @@ class InvitationKeyManager(models.Manager):
         """
         Return InvitationKey, or None if it doesn't (or shouldn't) exist.
         """
-        # Don't bother hitting database if invitation_key doesn't match pattern.
-        if not SHA1_RE.search(invitation_key):
-            return None
-        
         try:
             key = self.get(key=invitation_key)
         except self.model.DoesNotExist:
@@ -52,6 +48,10 @@ class InvitationKeyManager(models.Manager):
         salt = sha_constructor(str(random.random())).hexdigest()[:5]
         key = sha_constructor("%s%s%s" % (datetime.datetime.now(), salt, user.username)).hexdigest()
         return self.create(from_user=user, key=key)
+    
+    def create_bulk_invitation(self, user, key, uses):
+        """ Create a set of invitation keys - these can be used by anyone, not just a specific recipient """
+        return self.create(from_user=user, key=key, uses_left=uses)
 
     def remaining_invitations_for_user(self, user):
         """
@@ -74,19 +74,20 @@ class InvitationKey(models.Model):
                                         auto_now_add=True)
     from_user = models.ForeignKey(User, 
                                   related_name='invitations_sent')
-    registrant = models.ForeignKey(User, null=True, blank=True, 
+    registrant = models.ManyToManyField(User, null=True, blank=True, 
                                   related_name='invitations_used')
+    uses_left = models.IntegerField(default=1)
     
     objects = InvitationKeyManager()
     
     def __unicode__(self):
-        return u"Invitation from %s on %s" % (self.from_user.username, self.date_invited)
+        return u"Invitation from %s on %s (%s)" % (self.from_user.username, self.date_invited, self.key)
     
     def is_usable(self):
         """
         Return whether this key is still valid for registering a new user.        
         """
-        return self.registrant is None and not self.key_expired()
+        return self.uses_left > 0 and not self.key_expired()
     
     def key_expired(self):
         """
@@ -108,7 +109,8 @@ class InvitationKey(models.Model):
         """
         Note that this key has been used to register a new user.
         """
-        self.registrant = registrant
+        self.uses_left -= 1
+        self.registrant.add(registrant)
         self.save()
         
     def send_to(self, email):

@@ -12,7 +12,7 @@ if getattr(settings, 'INVITATION_USE_ALLAUTH', False):
     registration_template = 'accounts/signup.html'
     
     def registration_register(request, backend, success_url, form_class, disallowed_url, template_name, extra_context):
-        allauth_signup(request, template_name=template_name)
+        return allauth_signup(request, template_name=template_name)
 else:        
     from registration.views import register as registration_register
     from registration.forms import RegistrationForm

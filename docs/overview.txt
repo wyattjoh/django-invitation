@@ -24,6 +24,10 @@ This application enables a common user-invitation workflow:
 3. The invited user clicks the invitation link, and is then
    able to register and begin contributing to your site.
 
+The application also allows for a bulk invitation code to be generated. For 
+example, a code "TECHCRUNCH100" could be generated to allow for 100 
+Techcrunch readers to sign up to your application.  
+
 Various methods of extending and customizing the invitation process
 are also provided.
 
@@ -87,6 +91,17 @@ need to do the following:
 
 6. Link people to ``/accounts/invite/`` so they can start inviting.
 
+Bulk codes
+==========
+
+Create a code in the admin application, setting the number of uses according 
+to the number of times you want this code to be used. 
+ 
+TODO: 
+  * -1 uses could mean unlimited
+  * don't require an inviter to be associated with bulk codes 
+  * different error code if a user tries to register with the correct code, 
+    but it has been used up to its limit
 
 Templates used by django-invitation
 ===================================

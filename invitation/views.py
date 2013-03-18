@@ -25,7 +25,7 @@ from invitation.backends import InvitationBackend
 is_key_valid = InvitationKey.objects.is_key_valid
 remaining_invitations_for_user = InvitationKey.objects.remaining_invitations_for_user
 
-def invited(request, invitation_key=None, extra_context=None):
+def invited(request, invitation_key=None, invitation_email=None, extra_context=None):
     if getattr(settings, 'INVITE_MODE', False):
         if invitation_key and is_key_valid(invitation_key):
             template_name = 'invitation/invited.html'
@@ -33,7 +33,9 @@ def invited(request, invitation_key=None, extra_context=None):
             template_name = 'invitation/wrong_invitation_key.html'
         extra_context = extra_context is not None and extra_context.copy() or {}
         extra_context.update({'invitation_key': invitation_key})
+        extra_context.update({'invitation_email': invitation_email})
         request.session['invitation_key'] = invitation_key
+        request.session['invitation_email'] = invitation_email
         return direct_to_template(request, template_name, extra_context)
     else:
         return HttpResponseRedirect(reverse('registration_register'))
@@ -45,12 +47,14 @@ def register(request, backend, success_url=None,
             template_name=registration_template,
             wrong_template_name='invitation/wrong_invitation_key.html',
             extra_context=None):
+    
     extra_context = extra_context is not None and extra_context.copy() or {}
     if getattr(settings, 'INVITE_MODE', False):
         invitation_key = request.REQUEST.get('invitation_key', False)
         if invitation_key:
             extra_context.update({'invitation_key': invitation_key})
             if is_key_valid(invitation_key):
+                print '----register key is valid'
                 return registration_register(request, backend, success_url,
                                             form_class, disallowed_url,
                                             template_name, extra_context)

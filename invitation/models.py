@@ -124,7 +124,7 @@ class InvitationKey(models.Model):
                                      'invitation_key': self })
         # Email subject *must not* contain newlines
         subject = ''.join(subject.splitlines())
-        
+        #TODO:jp email added as emtp measure...should be added to model
         message = render_to_string('invitation/invitation_email.txt',
                                    { 'invitation_key': self,
                                      'expiration_days': settings.ACCOUNT_INVITATION_DAYS,

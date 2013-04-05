@@ -113,7 +113,7 @@ class InvitationKey(models.Model):
         self.registrant.add(registrant)
         self.save()
         
-    def send_to(self, email):
+    def send_to(self, email, from_email=settings.DEFAULT_FROM_EMAIL, sender_note=None,):
         """
         Send an invitation email to ``email``.
         """
@@ -124,15 +124,16 @@ class InvitationKey(models.Model):
                                      'invitation_key': self })
         # Email subject *must not* contain newlines
         subject = ''.join(subject.splitlines())
-        #TODO:jp email added as emtp measure...should be added to model
+        #TODO:jp email added as temtp measure...should be added to model
         message = render_to_string('invitation/invitation_email.txt',
                                    { 'invitation_key': self,
                                      'expiration_days': settings.ACCOUNT_INVITATION_DAYS,
                                      'from_user': self.from_user,
                                      'email': email,
+                                     'sender_note': sender_note,
                                      'site': current_site })
         
-        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
+        send_mail(subject, message, from_email, [email])
 
         
 class InvitationUser(models.Model):

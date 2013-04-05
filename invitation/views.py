@@ -1,10 +1,12 @@
 from django.conf import settings
 from django.views.generic.simple import direct_to_template
-from django.template.loader import render_to_string
+from django.template.loader import render_to_string, get_template
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib import messages
 
 if getattr(settings, 'INVITATION_USE_ALLAUTH', False):
     from allauth.socialaccount.views import signup as allauth_signup
@@ -67,6 +69,7 @@ def register(request, backend, success_url=None,
         return registration_register(request, backend, success_url, form_class,
                                      disallowed_url, template_name, extra_context)
 
+#TODO: add sender_note to form 
 def invite(request, success_url=None,
             form_class=InvitationKeyForm,
             template_name='invitation/invitation_form.html',
@@ -90,6 +93,7 @@ def invite(request, success_url=None,
 
     email_preview = render_to_string('invitation/invitation_email.txt',
                                    { 'invitation_key': None,
+                                     'email': 'invitee@example.com',
                                      'expiration_days': settings.ACCOUNT_INVITATION_DAYS,
                                      'from_user': request.user,
                                      'site': Site.objects.get_current() })
@@ -100,3 +104,36 @@ def invite(request, success_url=None,
         })
     return direct_to_template(request, template_name, extra_context)
 invite = login_required(invite)
+
+@staff_member_required
+def send_bulk_invitations(request, success_url=None):
+    current_site = Site.objects.get_current()
+    if request.POST.get('post'):
+        to_emails = [e.strip(' ') for e in request.POST['to_emails'].split(',')]
+        sender_note = request.POST['sender_note']
+        from_email = request.POST['from_email']
+        from_user = request.user
+        print to_emails
+        if len(to_emails)>0 and to_emails[0] != '' : 
+            for e in to_emails:
+                invitation = InvitationKey.objects.create_invitation(request.user)
+                invitation.send_to(e, from_email, sender_note)
+            messages.success(request, "Mail sent successfully")
+            return HttpResponseRedirect(success_url or reverse('invitation_invite_bulk'))
+        else:
+            messages.error(request, 'You did not provied any email addresses.')
+            return HttpResponseRedirect(reverse('invitation_invite_bulk'))
+    else:
+        context = {
+            'title': "Send Bulk Invitations",
+            'preview': render_to_string('invitation/invitation_email.txt', 
+                                   { 'invitation_key': 'xxxxxxxxx',
+                                     'expiration_days': settings.ACCOUNT_INVITATION_DAYS,
+                                     'from_user': request.user,
+                                     'sender_note': '--your note will be inserted here--',
+                                     'email': 'invitee@example.com',
+                                     'full_preview': True,
+                                     'site': current_site }),
+        }
+        return direct_to_template(request, 'invitation/invitation_form_bulk.html',
+            context)

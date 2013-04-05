@@ -83,25 +83,41 @@ need to do the following:
    
        (r'^accounts/', include('invitation.urls')),
 
-4. Run `python manage.py syncdb` to update your database with the
+4. Install Context Processors (if desired):
+   Add "invitation.context_processors.remaining_invitations" to your
+   settings file under TEMPLATE_CONTEXT_PROCESSORS.
+
+5. Run `python manage.py syncdb` to update your database with the
    django-invitation models.
 
-5. Override the base template or individual invitation templates
+6. Override the base template or individual invitation templates
    (see the section on templates below for details).
 
-6. Link people to ``/accounts/invite/`` so they can start inviting.
+7. Link people to ``/accounts/invite/`` so they can start inviting.
+
 
 Bulk codes
 ==========
 
-Create a code in the admin application, setting the number of uses according 
-to the number of times you want this code to be used. 
+Invitation keys admin application:
+----------------------------------
+Create a code in the Invitation keys admin application, setting the number
+of uses according to the number of times you want this code to be used.
  
 TODO: 
   * -1 uses could mean unlimited
   * don't require an inviter to be associated with bulk codes 
   * different error code if a user tries to register with the correct code, 
     but it has been used up to its limit
+
+Send unique invitations to bulk emails:
+----------------------------------------
+Use /accounts/invite/bulk/ or {% url invitation _invite_bulk %} to send unique
+invitation keys to a comma separated list of email addresses.  Also allows you
+to include a sender_note on top of the standard invitation email text.  This
+url is restricted by @staff_member_required.  You can hide this menu option
+in templates with {% if user.is_staff %}.
+
 
 Templates used by django-invitation
 ===================================
@@ -127,11 +143,18 @@ For further customization you can also override individual templates in your
 site's templates directory.
 
 * ``invitation/invitation_form.html`` displays the invitation
-  form for users to invite contacts.
+  form for users to invite contacts.  Display's a preview of the
+  invitation email w/o the href and signature.
+  
+* ``invitation/invitation_form_bulk.html`` is displayed when a user 
+  attempts to register his/her account. 
+  Notes: 
+  -This template is basedon django admin. 
+  -From_email will use DEFAULT_FROM_EMAIL if blank.
+  -This template shows a full preview of the email to be sent.
 
-* ``invitation/invitation_complete.html`` is displayed after the
-  invitation email has been sent, to tell the user his contact has been 
-  emailed.
+* ``invitation/invitation_complete.html`` displays the admin bulk 
+  invitation form for staff members to invite bulk email addresses.
 
 * ``invitation/invitation_email_subject.txt`` is used for the
   subject of the invitation email.
@@ -149,6 +172,11 @@ Additionally, the URLConf provided with django-invitation includes
 URL patterns for useful views in Django's built-in authentication
 application -- this means that a single ``include`` in your root
 URLConf can wire up invitation process.
+
+Context Processors:
+-------------------
+remaining_invitations: May be used, for exaple, to hide an Invite manue
+optin when a user does not have any invitations to send.
 
 
 How it works

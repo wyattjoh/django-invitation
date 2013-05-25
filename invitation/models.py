@@ -7,7 +7,7 @@ from django.utils.http import int_to_base36
 from django.utils.hashcompat import sha_constructor
 from django.utils.translation import ugettext_lazy as _
 from django.contrib.auth.models import User
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.contrib.sites.models import Site
 from django.utils.timezone import now
@@ -124,16 +124,20 @@ class InvitationKey(models.Model):
                                      'invitation_key': self })
         # Email subject *must not* contain newlines
         subject = ''.join(subject.splitlines())
-        #TODO:jp email added as temtp measure...should be added to model
-        message = render_to_string('invitation/invitation_email.txt',
-                                   { 'invitation_key': self,
-                                     'expiration_days': settings.ACCOUNT_INVITATION_DAYS,
-                                     'from_user': self.from_user,
-                                     'email': email,
-                                     'sender_note': sender_note,
-                                     'site': current_site })
         
-        send_mail(subject, message, from_email, [email])
+        #TODO:jp email added as temtp measure...should be added to model
+        context = { 'invitation_key': self,
+                    'expiration_days': settings.ACCOUNT_INVITATION_DAYS,
+                    'from_user': self.from_user,
+                    'email': email,
+                    'sender_note': sender_note,
+                    'site': current_site }
+                    
+        message = render_to_string('invitation/invitation_email.txt',context)
+        message_html = render_to_string('invitation/invitation_email.html',context)
+        msg = EmailMultiAlternatives(subject, message, from_email, [email])
+        msg.attach_alternative(message_html, "text/html")
+        msg.send()
 
         
 class InvitationUser(models.Model):

@@ -20,13 +20,17 @@ import datetime
 import sha
 
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.core import mail
 from django.core import management
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 from django.contrib.sites.models import Site
 
+try:
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+except ImportError: # django < 1.5
+    from django.contrib.auth.models import User
 
 from invitation import forms
 from invitation.models import InvitationKey, InvitationUser
@@ -59,9 +63,11 @@ class InvitationTestCase(TestCase):
     
     """
     def setUp(self):        
-        self.sample_user = User.objects.create_user(username='alice',
+        self.sample_user = User.objects.create_user(email='alice@example.com',
+                                                    first_name='Alice',
+                                                    last_name='Smith',
                                                     password='secret',
-                                                    email='alice@example.com')
+                                                    )
         self.sample_key = InvitationKey.objects.create_invitation(user=self.sample_user)
         self.expired_key = InvitationKey.objects.create_invitation(user=self.sample_user)
         self.expired_key.date_invited -= datetime.timedelta(days=settings.ACCOUNT_INVITATION_DAYS + 1)
@@ -69,15 +75,17 @@ class InvitationTestCase(TestCase):
         
         self.sample_registration_data = {
             'invitation_key': self.sample_key.key,
-            'username': 'new_user',
             'email': 'newbie@example.com',
+            'first_name': 'Newbie 1',
+            'last_name': 'Smithers 1',
             'password1': 'secret',
             'password2': 'secret',
             'tos': '1'}
         
         self.sample_allauth_data = {
-            'username': 'new_user',
             'email': 'newbie@example.com',
+            'first_name': 'Newbie 1',
+            'last_name': 'Smithers 1',
             'password1': 'secret',
             'password2': 'secret',
             'terms_and_conds': '1'}     
@@ -180,9 +188,10 @@ class InvitationModelTests(InvitationTestCase):
         remaining_invites = InvitationKey.objects.remaining_invitations_for_user
 
         # New user starts with settings.INVITATIONS_PER_USER
-        user = User.objects.create_user(username='newbie',
-                                        password='secret',
-                                        email='newbie@example.com')
+        user = User.objects.create_user(email='newbie@example.com',
+                                        first_name='Newbie 1',
+                                        last_name='Smithers 1',
+                                        password='secret')
         self.assertEqual(remaining_invites(user), settings.INVITATIONS_PER_USER)
 
         # After using some, amount remaining is decreased
@@ -200,7 +209,8 @@ class InvitationModelTests(InvitationTestCase):
         self.assertEqual(remaining, new_remaining)
 
         # If no InvitationUser (for pre-existing/legacy User), one is created
-        old_sample_user = User.objects.create_user(username='lewis',
+        old_sample_user = User.objects.create_user(first_name='Lewis',
+                                                   last_name='Smithers 2',
                                                    password='secret',
                                                    email='lewis@example.com')
         old_sample_user.invitationuser_set.all().delete()
@@ -265,7 +275,7 @@ class InvitationViewTestsRegistration(InvitationTestCaseRegistration):
         
         """
         # You need to be logged in to send an invite.
-        response = self.client.login(username='alice', password='secret')
+        response = self.client.login(email='alice@example.com', password='secret')
         remaining_invitations = InvitationKey.objects.remaining_invitations_for_user(self.sample_user)
         
         # Invalid email data fails.
@@ -338,19 +348,19 @@ class InvitationViewTestsRegistration(InvitationTestCaseRegistration):
         response = self.client.post(reverse('registration_register'), 
                                     data=registration_data)
         self.assertRedirect(response, 'registration_complete')
-        user = User.objects.get(username='new_user')
+        user = User.objects.get(email='newbie@example.com')
         key = InvitationKey.objects.get_key(self.sample_key.key)
         self.assertEqual(user, key.registrant)
 
         # Trying to reuse the same key then fails.
-        registration_data['username'] = 'even_newer_user'
+        registration_data['email'] = 'even_newer_user@example.com'
         response = self.client.post(reverse('registration_register'), 
                                     data=registration_data)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 
                                 'invitation/wrong_invitation_key.html')
         try:        
-            even_newer_user = User.objects.get(username='even_newer_user')
+            even_newer_user = User.objects.get(email='even_newer_user@example.com')
             self.fail("Invitation already used - No user should be created.")
         except User.DoesNotExist:
             pass
@@ -368,7 +378,7 @@ class InvitationViewTestsAllauth(InvitationTestCaseAllauth):
         
         """
         # You need to be logged in to send an invite.
-        response = self.client.login(username='alice', password='secret')
+        response = self.client.login(email='alice@example.com', password='secret')
         remaining_invitations = InvitationKey.objects.remaining_invitations_for_user(self.sample_user)
         
         # Invalid email data fails.
@@ -455,12 +465,12 @@ class InvitationViewTestsAllauth(InvitationTestCaseAllauth):
         self.assertNotIn('invitation_key', self.client.session)
         
         # self.assertRedirect(response, 'registration_complete')
-        user = User.objects.get(username='new_user')
+        user = User.objects.get(email='newbie@example.com')
         key = InvitationKey.objects.get_key(self.sample_key.key)
         self.assertIn(key, user.invitations_used.all())
 
         # Trying to reuse the same key then fails.
-        registration_data['username'] = 'even_newer_user'
+        registration_data['email'] = 'even_newer_user@example.com'
         response = self.client.post(reverse('invitation_invited', kwargs={'invitation_key' : self.sample_key.key }))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 

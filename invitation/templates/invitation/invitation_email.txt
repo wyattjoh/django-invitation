@@ -1,4 +1,4 @@
-{% load i18n %}{{sender_note}}{% blocktrans with site.name as sitename and from_user.username as from_user %}
+{% load i18n %}{{sender_note}}{% blocktrans with site.name as sitename and from_user as from_user %}
 Congradulations! You have been invited by {{ from_user }} to join {{ sitename }}.
 {% endblocktrans %}
 Click the link below to register for your account within the next {{expiration_days}} days.

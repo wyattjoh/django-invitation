@@ -6,11 +6,16 @@ from django.conf import settings
 from django.utils.http import int_to_base36
 from django.utils.hashcompat import sha_constructor
 from django.utils.translation import ugettext_lazy as _
-from django.contrib.auth.models import User
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.contrib.sites.models import Site
 from django.utils.timezone import now
+
+try:
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+except ImportError: # django < 1.5
+    from django.contrib.auth.models import User
 
 if getattr(settings, 'INVITATION_USE_ALLAUTH', False):
     import re
@@ -43,10 +48,10 @@ class InvitationKeyManager(models.Manager):
         Create an ``InvitationKey`` and returns it.
         
         The key for the ``InvitationKey`` will be a SHA1 hash, generated 
-        from a combination of the ``User``'s username and a random salt.
+        from a combination of the ``User``'s __unicode__ and a random salt.
         """
         salt = sha_constructor(str(random.random())).hexdigest()[:5]
-        key = sha_constructor("%s%s%s" % (datetime.datetime.now(), salt, user.username)).hexdigest()
+        key = sha_constructor("%s%s%s" % (datetime.datetime.now(), salt, user)).hexdigest()
         return self.create(from_user=user, key=key)
     
     def create_bulk_invitation(self, user, key, uses):
@@ -81,7 +86,7 @@ class InvitationKey(models.Model):
     objects = InvitationKeyManager()
     
     def __unicode__(self):
-        return u"Invitation from %s on %s (%s)" % (self.from_user.username, self.date_invited, self.key)
+        return u"Invitation from %s on %s (%s)" % (self.from_user, self.date_invited, self.key)
     
     def is_usable(self):
         """
@@ -145,7 +150,7 @@ class InvitationUser(models.Model):
     invitations_remaining = models.IntegerField()
 
     def __unicode__(self):
-        return u"InvitationUser for %s" % self.inviter.username
+        return u"InvitationUser for %s" % self.inviter
 
     
 def user_post_save(sender, instance, created, **kwargs):

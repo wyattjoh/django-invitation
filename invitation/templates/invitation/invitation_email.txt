@@ -2,8 +2,8 @@
 Congradulations! You have been invited by {{ from_user }} to join {{ sitename }}.
 {% endblocktrans %}
 Click the link below to register for your account within the next {{expiration_days}} days.
-{% if invitation_key.key %}http://{{site.domain}}{% url invitation_invited invitation_key=invitation_key.key invitation_email=email%}
-{% elif not invitation_key.key and full_preview %}http://{{site.domain}}{% url invitation_invited invitation_key=invitation_key invitation_email=email%}
+{% if invitation_key.key %}http://{{site.domain}}{% url "invitation_invited" invitation_key=invitation_key.key invitation_email=email%}
+{% elif not invitation_key.key and full_preview %}http://{{site.domain}}{% url "invitation_invited" invitation_key=invitation_key invitation_email=email%}
 {% endif %}{% if invitation_key.key or full_preview%}{% blocktrans with site.name as sitename %}
 All the best,
 The {{ sitename }} Team

@@ -9,7 +9,7 @@
 <p>{% trans "You currently have no invitations to send." %}</p>
 {% else %}
 
-<form action="{% url invitation_invite %}" method="POST">
+<form action="{% url "invitation_invite" %}" method="POST">
 <table>
 {{form.as_table}}
 </table>

@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.views.generic.simple import direct_to_template
+from django.shortcuts import render
 from django.template.loader import render_to_string, get_template
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
@@ -38,7 +38,7 @@ def invited(request, invitation_key=None, invitation_email=None, extra_context=N
         extra_context.update({'invitation_email': invitation_email})
         request.session['invitation_key'] = invitation_key
         request.session['invitation_email'] = invitation_email
-        return direct_to_template(request, template_name, extra_context)
+        return render(request, template_name, extra_context)
     else:
         return HttpResponseRedirect(reverse('registration_register'))
 
@@ -64,7 +64,7 @@ def register(request, backend, success_url=None,
                 extra_context.update({'invalid_key': True})
         else:
             extra_context.update({'no_key': True})
-        return direct_to_template(request, wrong_template_name, extra_context)
+        return render(request, wrong_template_name, extra_context)
     else:
         return registration_register(request, backend, success_url, form_class,
                                      disallowed_url, template_name, extra_context)
@@ -102,7 +102,7 @@ def invite(request, success_url=None,
             'remaining_invitations': remaining_invitations,
             'email_preview': email_preview,
         })
-    return direct_to_template(request, template_name, extra_context)
+    return render(request, template_name, extra_context)
 invite = login_required(invite)
 
 @staff_member_required
@@ -135,5 +135,5 @@ def send_bulk_invitations(request, success_url=None):
                                      'full_preview': True,
                                      'site': current_site }),
         }
-        return direct_to_template(request, 'invitation/invitation_form_bulk.html',
+        return render(request, 'invitation/invitation_form_bulk.html',
             context)
